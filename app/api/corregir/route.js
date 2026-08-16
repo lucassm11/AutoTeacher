@@ -69,7 +69,7 @@ INSTRUCCIONES:
     for (let intento = 1; intento <= maxIntentos; intento++) {
       try {
         respuesta = await ai.models.generateContent({
-          model: 'gemini-flash-latest',
+          model: 'gemini-3.5-flash-lite', // nombre fijo (no alias) con 500 peticiones/día en el tier gratuito
           contents: [
             {
               role: 'user',
@@ -101,9 +101,24 @@ INSTRUCCIONES:
     // 7. Devolvemos el resultado al navegador del profesor.
     return Response.json(resultado, { status: 200 });
   } catch (error) {
-    // Si algo falla (Gemini no responde, el JSON no se pudo parsear, etc.),
-    // devolvemos un error claro en vez de que el servidor se caiga sin más.
     console.error('Error en /api/corregir:', error);
+
+    // Distinguimos el error 429 (límite de cuota gratuita superado) del resto,
+    // porque el mensaje que le conviene ver al profesor es distinto: esto no es
+    // un fallo del sistema, es que hemos usado ya las peticiones gratuitas
+    // disponibles por ahora.
+    const esLimiteCuota = error.status === 429 || error.message?.includes('429');
+
+    if (esLimiteCuota) {
+      return Response.json(
+        {
+          error:
+            'Hemos alcanzado el límite de correcciones gratuitas por ahora. Espera unos minutos e inténtalo de nuevo.',
+        },
+        { status: 429 }
+      );
+    }
+
     return Response.json(
       { error: 'No se pudo procesar la corrección. Inténtalo de nuevo.' },
       { status: 500 }
