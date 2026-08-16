@@ -12,7 +12,9 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
+  doc,
+  getDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
@@ -38,6 +40,15 @@ export default function Dashboard() {
   const [tituloNuevaRubrica, setTituloNuevaRubrica] = useState('');
   const [guardandoRubrica, setGuardandoRubrica] = useState(false);
 
+  // --- Plan del profesor y Modo Autopiloto ---
+  const [plan, setPlan] = useState('gratis');
+  const [autopiloto, setAutopiloto] = useState(false);
+
+  // --- Examen anotado visualmente ---
+  const [imagenAnotada, setImagenAnotada] = useState(null);
+  const [generandoImagen, setGenerandoImagen] = useState(false);
+  const [errorImagen, setErrorImagen] = useState('');
+
   useEffect(() => {
     const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
       if (usuarioActual) {
@@ -50,11 +61,28 @@ export default function Dashboard() {
     return () => desuscribir();
   }, [router]);
 
-  // Cuando ya sabemos quién es el profesor, cargamos sus rúbricas guardadas
+  // Cuando ya sabemos quién es el profesor, cargamos sus rúbricas y su perfil (plan)
   useEffect(() => {
     if (!usuario) return;
     cargarRubricasGuardadas();
+    cargarOCrearPerfil();
   }, [usuario]);
+
+  const cargarOCrearPerfil = async () => {
+    try {
+      const perfilRef = doc(db, 'perfiles', usuario.uid);
+      const perfilSnap = await getDoc(perfilRef);
+      if (perfilSnap.exists()) {
+        setPlan(perfilSnap.data().plan || 'gratis');
+      } else {
+        // Primera vez que este profesor entra: le creamos un perfil en plan gratis
+        await setDoc(perfilRef, { plan: 'gratis', email: usuario.email });
+        setPlan('gratis');
+      }
+    } catch (err) {
+      console.error('Error al cargar el perfil:', err);
+    }
+  };
 
   const cargarRubricasGuardadas = async () => {
     try {
@@ -108,9 +136,15 @@ export default function Dashboard() {
     setError('');
     setResultado(null);
     setGuardado(false);
+    setImagenAnotada(null);
+    setErrorImagen('');
 
-    if (!archivo || !rubrica) {
-      setError('Sube un archivo y escribe la rúbrica antes de corregir.');
+    if (!archivo || (!autopiloto && !rubrica)) {
+      setError(
+        autopiloto
+          ? 'Sube un archivo antes de corregir.'
+          : 'Sube un archivo y escribe la rúbrica antes de corregir.'
+      );
       return;
     }
 
@@ -119,7 +153,8 @@ export default function Dashboard() {
     try {
       const formData = new FormData();
       formData.append('archivo', archivo);
-      formData.append('rubrica', rubrica);
+      formData.append('rubrica', autopiloto ? '' : rubrica);
+      formData.append('modo', autopiloto ? 'autopiloto' : 'rubrica');
 
       const respuesta = await fetch('/api/corregir', {
         method: 'POST',
@@ -133,6 +168,12 @@ export default function Dashboard() {
       }
 
       setResultado(datos);
+
+      // Si es una foto (no PDF), generamos automáticamente la versión
+      // anotada visualmente, sin que el profesor tenga que pedirlo.
+      if (archivo.type?.startsWith('image/')) {
+        generarImagenAnotada(datos);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -140,11 +181,40 @@ export default function Dashboard() {
     }
   };
 
+  const generarImagenAnotada = async (resultadoData) => {
+    setGenerandoImagen(true);
+    setErrorImagen('');
+    try {
+      const formData = new FormData();
+      formData.append('archivo', archivo);
+      formData.append('resultado', JSON.stringify(resultadoData));
+      formData.append('plan', plan);
+
+      const respuesta = await fetch('/api/anotar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || 'No se pudo generar el examen anotado.');
+      }
+
+      setImagenAnotada(datos.imagen_base64);
+    } catch (err) {
+      setErrorImagen(err.message);
+    } finally {
+      setGenerandoImagen(false);
+    }
+  };
+
   const confirmarYGuardar = async () => {
     try {
       await addDoc(collection(db, 'correcciones'), {
         profesor_id: usuario.uid,
-        rubrica_texto: rubrica,
+        rubrica_texto: autopiloto ? null : rubrica,
+        modo: autopiloto ? 'autopiloto' : 'rubrica',
         resultado: resultado,
         fecha: serverTimestamp(),
         estado: 'confirmada',
@@ -165,23 +235,35 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[color:var(--color-paper)]">
-      <header className="bg-[color:var(--color-pine)] text-white">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="font-display italic text-2xl">
-            Auto<span className="text-[color:var(--color-gold)]">Teacher</span>
-          </h1>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/historial" className="text-white/80 hover:text-white transition">
-              Historial
-            </Link>
-            <span className="text-white/70 hidden sm:inline">{usuario?.email}</span>
-            <button
-              onClick={cerrarSesion}
-              className="rounded-lg border border-white/25 px-3 py-1.5 hover:bg-white/10 transition"
-            >
-              Cerrar sesión
-            </button>
-          </div>
+      <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+        <Link href="/" className="font-display italic text-2xl text-[color:var(--color-pine)]">
+          Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
+        </Link>
+        <div className="flex items-center gap-4 text-sm">
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              plan === 'pro'
+                ? 'bg-[color:var(--color-gold)] text-[color:var(--color-ink)]'
+                : 'bg-black/5 text-[color:var(--color-ink)]/60'
+            }`}
+          >
+            Plan {plan === 'pro' ? 'Pro' : 'Gratis'}
+          </span>
+          <Link
+            href="/historial"
+            className="text-[color:var(--color-ink)]/70 hover:text-[color:var(--color-ink)] transition"
+          >
+            Historial
+          </Link>
+          <span className="text-[color:var(--color-ink)]/50 hidden sm:inline">
+            {usuario?.email}
+          </span>
+          <button
+            onClick={cerrarSesion}
+            className="rounded-lg border border-black/15 px-3 py-1.5 hover:bg-black/5 transition"
+          >
+            Cerrar sesión
+          </button>
         </div>
       </header>
 
@@ -192,72 +274,113 @@ export default function Dashboard() {
           </h2>
 
           <form onSubmit={corregirExamen} className="space-y-5">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-[color:var(--color-ink)]/80">
-                  Rúbrica de corrección
-                </label>
-                {rubricasGuardadas.length > 0 && (
-                  <select
-                    value={rubricaSeleccionada}
-                    onChange={(e) => seleccionarRubrica(e.target.value)}
-                    className="text-xs border border-black/10 rounded-md px-2 py-1 outline-none"
+            {/* Modo Autopiloto: solo para plan Pro */}
+            <div
+              className={`rounded-lg border px-4 py-3 flex items-start justify-between gap-3 ${
+                autopiloto
+                  ? 'border-[color:var(--color-gold)] bg-[color:var(--color-gold)]/10'
+                  : 'border-black/10'
+              }`}
+            >
+              <div>
+                <p className="text-sm font-semibold text-[color:var(--color-ink)] flex items-center gap-2">
+                  Modo Autopiloto
+                  {plan !== 'pro' && (
+                    <span className="text-[10px] uppercase font-bold bg-[color:var(--color-indigo)] text-white rounded-full px-2 py-0.5">
+                      Pro
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-[color:var(--color-ink)]/60 mt-0.5">
+                  {plan === 'pro'
+                    ? 'La IA corrige el examen de forma autónoma, sin rúbrica. Tú validas el resultado.'
+                    : 'Disponible en el plan Pro: la IA corrige sin necesidad de rúbrica.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => plan === 'pro' && setAutopiloto(!autopiloto)}
+                disabled={plan !== 'pro'}
+                className={`shrink-0 w-11 h-6 rounded-full relative transition ${
+                  autopiloto ? 'bg-[color:var(--color-indigo)]' : 'bg-black/15'
+                } ${plan !== 'pro' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition ${
+                    autopiloto ? 'translate-x-5' : ''
+                  }`}
+                />
+              </button>
+            </div>
+
+            {!autopiloto && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-[color:var(--color-ink)]/80">
+                    Rúbrica de corrección
+                  </label>
+                  {rubricasGuardadas.length > 0 && (
+                    <select
+                      value={rubricaSeleccionada}
+                      onChange={(e) => seleccionarRubrica(e.target.value)}
+                      className="text-xs border border-black/10 rounded-md px-2 py-1 outline-none"
+                    >
+                      <option value="">Cargar rúbrica guardada…</option>
+                      {rubricasGuardadas.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.titulo}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <textarea
+                  value={rubrica}
+                  onChange={(e) => setRubrica(e.target.value)}
+                  rows={7}
+                  placeholder="Escribe aquí los criterios: preguntas, puntos por pregunta, qué se considera correcto…"
+                  className="w-full rounded-lg border border-black/10 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition resize-none"
+                  required={!autopiloto}
+                />
+
+                {/* Guardar rúbrica para reutilizar */}
+                {!mostrarGuardar ? (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuardar(true)}
+                    disabled={!rubrica.trim()}
+                    className="mt-2 text-xs text-[color:var(--color-indigo)] hover:underline disabled:text-black/30 disabled:no-underline"
                   >
-                    <option value="">Cargar rúbrica guardada…</option>
-                    {rubricasGuardadas.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.titulo}
-                      </option>
-                    ))}
-                  </select>
+                    Guardar esta rúbrica para usarla luego
+                  </button>
+                ) : (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={tituloNuevaRubrica}
+                      onChange={(e) => setTituloNuevaRubrica(e.target.value)}
+                      placeholder="Nombre para esta rúbrica (ej. Examen Matemáticas 3ºESO)"
+                      className="flex-1 text-xs rounded-md border border-black/10 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={guardarRubricaActual}
+                      disabled={guardandoRubrica || !tituloNuevaRubrica.trim()}
+                      className="text-xs bg-[color:var(--color-indigo)] text-white rounded-md px-3 py-2 disabled:opacity-50"
+                    >
+                      {guardandoRubrica ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarGuardar(false)}
+                      className="text-xs text-[color:var(--color-ink)]/50 px-2"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 )}
               </div>
-              <textarea
-                value={rubrica}
-                onChange={(e) => setRubrica(e.target.value)}
-                rows={7}
-                placeholder="Escribe aquí los criterios: preguntas, puntos por pregunta, qué se considera correcto…"
-                className="w-full rounded-lg border border-black/10 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition resize-none"
-                required
-              />
-
-              {/* Guardar rúbrica para reutilizar */}
-              {!mostrarGuardar ? (
-                <button
-                  type="button"
-                  onClick={() => setMostrarGuardar(true)}
-                  disabled={!rubrica.trim()}
-                  className="mt-2 text-xs text-[color:var(--color-indigo)] hover:underline disabled:text-black/30 disabled:no-underline"
-                >
-                  Guardar esta rúbrica para usarla luego
-                </button>
-              ) : (
-                <div className="mt-2 flex gap-2">
-                  <input
-                    type="text"
-                    value={tituloNuevaRubrica}
-                    onChange={(e) => setTituloNuevaRubrica(e.target.value)}
-                    placeholder="Nombre para esta rúbrica (ej. Examen Matemáticas 3ºESO)"
-                    className="flex-1 text-xs rounded-md border border-black/10 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={guardarRubricaActual}
-                    disabled={guardandoRubrica || !tituloNuevaRubrica.trim()}
-                    className="text-xs bg-[color:var(--color-indigo)] text-white rounded-md px-3 py-2 disabled:opacity-50"
-                  >
-                    {guardandoRubrica ? 'Guardando…' : 'Guardar'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMostrarGuardar(false)}
-                    className="text-xs text-[color:var(--color-ink)]/50 px-2"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
@@ -327,6 +450,18 @@ export default function Dashboard() {
                 Resultado de la corrección
               </h3>
 
+              {resultado.criterios_aplicados && (
+                <div className="mb-5 rounded-lg bg-[color:var(--color-gold)]/10 border border-[color:var(--color-gold)] px-4 py-3">
+                  <p className="text-xs font-semibold text-[color:var(--color-ink)] mb-1">
+                    ⚠ Corrección generada en Modo Autopiloto — revisa con especial atención
+                  </p>
+                  <p className="text-xs text-[color:var(--color-ink)]/70">
+                    La IA definió sus propios criterios de corrección:{' '}
+                    {resultado.criterios_aplicados}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {resultado.preguntas.map((pregunta) => (
                   <div
@@ -349,6 +484,45 @@ export default function Dashboard() {
               <p className="font-display italic text-[color:var(--color-ink)]/80 mt-6 pt-5 border-t border-black/5">
                 {resultado.feedback_general}
               </p>
+
+              {/* Examen corregido visualmente */}
+              <div className="mt-6 pt-5 border-t border-black/5">
+                <h4 className="text-sm font-semibold text-[color:var(--color-ink)] mb-3">
+                  Examen corregido visualmente
+                </h4>
+
+                {generandoImagen && (
+                  <p className="text-sm text-[color:var(--color-ink)]/50">
+                    Dibujando las correcciones sobre la imagen…
+                  </p>
+                )}
+
+                {errorImagen && (
+                  <p className="text-sm text-[color:var(--color-ink)]/50">{errorImagen}</p>
+                )}
+
+                {imagenAnotada && (
+                  <div>
+                    <img
+                      src={`data:image/png;base64,${imagenAnotada}`}
+                      alt="Examen con las correcciones dibujadas encima"
+                      className="rounded-lg border border-black/10 w-full"
+                    />
+                    <a
+                      href={`data:image/png;base64,${imagenAnotada}`}
+                      download="examen-corregido.png"
+                      className="mt-3 inline-block text-sm text-[color:var(--color-indigo)] hover:underline"
+                    >
+                      ↓ Descargar examen corregido
+                    </a>
+                    {plan !== 'pro' && (
+                      <p className="text-xs text-[color:var(--color-ink)]/50 mt-1">
+                        Las descargas del plan gratuito incluyen una marca de agua de AutoGradely.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {!guardado ? (
                 <button

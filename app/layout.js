@@ -22,7 +22,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata = {
-  title: "AutoTeacher",
+  title: "AutoGradely",
   description: "Corrección de tareas y exámenes asistida por IA para profesores",
 };
 

@@ -6,9 +6,9 @@ export default function Home() {
     <div className="min-h-screen bg-[color:var(--color-paper)]">
       {/* Nav */}
       <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-        <span className="font-display italic text-2xl text-[color:var(--color-pine)]">
-          Auto<span className="text-[color:var(--color-red-pen)]">Teacher</span>
-        </span>
+        <Link href="/" className="font-display italic text-2xl text-[color:var(--color-pine)]">
+          Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
+        </Link>
         <nav className="flex items-center gap-3">
           <Link
             href="/login"
@@ -93,7 +93,7 @@ export default function Home() {
         </h2>
         <p className="text-[color:var(--color-ink)]/70 mb-12 max-w-xl">
           Sin curva de aprendizaje: si ya sabes hacer una rúbrica, ya sabes
-          usar AutoTeacher.
+          usar AutoGradely.
         </p>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -106,7 +106,7 @@ export default function Home() {
             {
               paso: 'Sube la tarea',
               texto:
-                'Haz una foto con el móvil o sube un PDF. AutoTeacher lee la letra y las respuestas por ti.',
+                'Haz una foto con el móvil o sube un PDF. AutoGradely lee la letra y las respuestas por ti.',
             },
             {
               paso: 'Revisa y confirma',
@@ -265,7 +265,7 @@ export default function Home() {
 
       <footer className="border-t border-black/5">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[color:var(--color-ink)]/50">
-          <span>© {new Date().getFullYear()} AutoTeacher</span>
+          <span>© {new Date().getFullYear()} AutoGradely</span>
           <div className="flex gap-5">
             <Link href="/terminos" className="hover:text-[color:var(--color-ink)]">
               Términos

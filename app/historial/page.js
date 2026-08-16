@@ -80,18 +80,16 @@ export default function Historial() {
 
   return (
     <div className="min-h-screen bg-[color:var(--color-paper)]">
-      <header className="bg-[color:var(--color-pine)] text-white">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="font-display italic text-2xl">
-            Auto<span className="text-[color:var(--color-gold)]">Teacher</span>
-          </h1>
-          <Link
-            href="/dashboard"
-            className="text-sm rounded-lg border border-white/25 px-3 py-1.5 hover:bg-white/10 transition"
-          >
-            ← Volver a corregir
-          </Link>
-        </div>
+      <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+        <Link href="/" className="font-display italic text-2xl text-[color:var(--color-pine)]">
+          Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
+        </Link>
+        <Link
+          href="/dashboard"
+          className="text-sm rounded-lg border border-black/15 px-3 py-1.5 hover:bg-black/5 transition"
+        >
+          ← Volver a corregir
+        </Link>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-10">

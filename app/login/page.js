@@ -78,9 +78,9 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Wordmark */}
         <div className="text-center mb-8">
-          <h1 className="font-display italic text-5xl text-[color:var(--color-pine)]">
-            Auto<span className="text-[color:var(--color-red-pen)]">Teacher</span>
-          </h1>
+          <Link href="/" className="font-display italic text-5xl text-[color:var(--color-pine)]">
+            Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
+          </Link>
           <p className="mt-2 text-sm tracking-wide text-[color:var(--color-ink)]/60">
             Corrección con IA, revisada por ti
           </p>

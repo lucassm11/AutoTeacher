@@ -6,7 +6,7 @@ export default function Terminos() {
     <div className="min-h-screen bg-[color:var(--color-paper)]">
       <header className="max-w-3xl mx-auto px-6 py-8">
         <Link href="/" className="font-display italic text-2xl text-[color:var(--color-pine)]">
-          Auto<span className="text-[color:var(--color-red-pen)]">Teacher</span>
+          Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
         </Link>
       </header>
 
@@ -21,10 +21,10 @@ export default function Terminos() {
         <div className="space-y-6 text-[color:var(--color-ink)]/80 text-sm leading-relaxed">
           <section>
             <h2 className="font-display text-xl text-[color:var(--color-pine)] mb-2">
-              1. Qué es AutoTeacher
+              1. Qué es AutoGradely
             </h2>
             <p>
-              AutoTeacher es una herramienta que ayuda a profesores a corregir
+              AutoGradely es una herramienta que ayuda a profesores a corregir
               tareas y exámenes utilizando inteligencia artificial. La IA
               propone una nota y un feedback a partir de la rúbrica que tú
               defines; en ningún caso la corrección se considera definitiva
@@ -37,7 +37,7 @@ export default function Terminos() {
               2. Quién puede usar el servicio
             </h2>
             <p>
-              AutoTeacher está dirigido a docentes, academias y centros
+              AutoGradely está dirigido a docentes, academias y centros
               educativos mayores de edad. Al crear una cuenta, confirmas que
               actúas en tu capacidad profesional como educador o
               representante de un centro educativo.
@@ -51,7 +51,7 @@ export default function Terminos() {
             <p>
               La IA es una herramienta de apoyo, no un sustituto del criterio
               del profesor. Eres tú quien decide si una nota y un feedback
-              generados se envían o no a tus alumnos. AutoTeacher no se hace
+              generados se envían o no a tus alumnos. AutoGradely no se hace
               responsable de notas o comentarios que el profesor confirme sin
               revisar adecuadamente.
             </p>
@@ -92,7 +92,7 @@ export default function Terminos() {
               6. Cambios en el servicio
             </h2>
             <p>
-              AutoTeacher está en desarrollo activo y puede cambiar,
+              AutoGradely está en desarrollo activo y puede cambiar,
               mejorar o interrumpir funcionalidades sin previo aviso durante
               esta fase inicial. Avisaremos con antelación razonable de
               cualquier cambio que afecte de forma significativa a cuentas ya

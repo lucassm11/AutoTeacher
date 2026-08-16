@@ -6,7 +6,7 @@ export default function Privacidad() {
     <div className="min-h-screen bg-[color:var(--color-paper)]">
       <header className="max-w-3xl mx-auto px-6 py-8">
         <Link href="/" className="font-display italic text-2xl text-[color:var(--color-pine)]">
-          Auto<span className="text-[color:var(--color-red-pen)]">Teacher</span>
+          Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
         </Link>
       </header>
 
@@ -41,7 +41,7 @@ export default function Privacidad() {
               2. Cómo usamos un proveedor de IA externo
             </h2>
             <p>
-              Para generar las correcciones, AutoTeacher envía el contenido
+              Para generar las correcciones, AutoGradely envía el contenido
               de la tarea (imagen o PDF) y la rúbrica a la API de Gemini, de
               Google, que procesa esa información para devolver el feedback y
               la nota. Este envío es puntual, solo para procesar esa
@@ -54,7 +54,7 @@ export default function Privacidad() {
               3. Datos de menores
             </h2>
             <p>
-              AutoTeacher está diseñado para que lo use el profesorado, no
+              AutoGradely está diseñado para que lo use el profesorado, no
               directamente los alumnos. Si las tareas que subes pertenecen a
               alumnos menores de edad, es responsabilidad del centro
               educativo o del profesor contar con la base legal adecuada
@@ -93,7 +93,7 @@ export default function Privacidad() {
               6. Cookies
             </h2>
             <p>
-              AutoTeacher utiliza únicamente las cookies técnicas necesarias
+              AutoGradely utiliza únicamente las cookies técnicas necesarias
               para mantener tu sesión iniciada. No utilizamos cookies de
               publicidad ni de seguimiento de terceros.
             </p>
