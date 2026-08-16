@@ -2,9 +2,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+  orderBy,
+} from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export default function Dashboard() {
@@ -22,6 +31,13 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [guardado, setGuardado] = useState(false);
 
+  // --- Rúbricas guardadas ---
+  const [rubricasGuardadas, setRubricasGuardadas] = useState([]);
+  const [rubricaSeleccionada, setRubricaSeleccionada] = useState('');
+  const [mostrarGuardar, setMostrarGuardar] = useState(false);
+  const [tituloNuevaRubrica, setTituloNuevaRubrica] = useState('');
+  const [guardandoRubrica, setGuardandoRubrica] = useState(false);
+
   useEffect(() => {
     const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
       if (usuarioActual) {
@@ -34,9 +50,57 @@ export default function Dashboard() {
     return () => desuscribir();
   }, [router]);
 
+  // Cuando ya sabemos quién es el profesor, cargamos sus rúbricas guardadas
+  useEffect(() => {
+    if (!usuario) return;
+    cargarRubricasGuardadas();
+  }, [usuario]);
+
+  const cargarRubricasGuardadas = async () => {
+    try {
+      const q = query(
+        collection(db, 'rubricas'),
+        where('profesor_id', '==', usuario.uid)
+      );
+      const snapshot = await getDocs(q);
+      const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setRubricasGuardadas(lista);
+    } catch (err) {
+      console.error('Error al cargar rúbricas:', err);
+    }
+  };
+
   const cerrarSesion = async () => {
     await signOut(auth);
     router.push('/login');
+  };
+
+  // Cuando el profesor elige una rúbrica guardada en el desplegable
+  const seleccionarRubrica = (id) => {
+    setRubricaSeleccionada(id);
+    if (!id) return;
+    const encontrada = rubricasGuardadas.find((r) => r.id === id);
+    if (encontrada) setRubrica(encontrada.contenido);
+  };
+
+  const guardarRubricaActual = async () => {
+    if (!rubrica.trim() || !tituloNuevaRubrica.trim()) return;
+    setGuardandoRubrica(true);
+    try {
+      await addDoc(collection(db, 'rubricas'), {
+        profesor_id: usuario.uid,
+        titulo: tituloNuevaRubrica.trim(),
+        contenido: rubrica,
+        fecha: serverTimestamp(),
+      });
+      setTituloNuevaRubrica('');
+      setMostrarGuardar(false);
+      await cargarRubricasGuardadas();
+    } catch (err) {
+      setError('No se pudo guardar la rúbrica: ' + err.message);
+    } finally {
+      setGuardandoRubrica(false);
+    }
   };
 
   const corregirExamen = async (e) => {
@@ -101,13 +165,15 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[color:var(--color-paper)]">
-      {/* Cabecera */}
       <header className="bg-[color:var(--color-pine)] text-white">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="font-display italic text-2xl">
             Auto<span className="text-[color:var(--color-gold)]">Teacher</span>
           </h1>
           <div className="flex items-center gap-4 text-sm">
+            <Link href="/historial" className="text-white/80 hover:text-white transition">
+              Historial
+            </Link>
             <span className="text-white/70 hidden sm:inline">{usuario?.email}</span>
             <button
               onClick={cerrarSesion}
@@ -120,7 +186,6 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-10 grid gap-8 md:grid-cols-2">
-        {/* Columna izquierda: formulario */}
         <section className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 h-fit">
           <h2 className="font-display text-xl text-[color:var(--color-pine)] mb-4">
             Corregir una tarea
@@ -128,9 +193,25 @@ export default function Dashboard() {
 
           <form onSubmit={corregirExamen} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
-                Rúbrica de corrección
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-[color:var(--color-ink)]/80">
+                  Rúbrica de corrección
+                </label>
+                {rubricasGuardadas.length > 0 && (
+                  <select
+                    value={rubricaSeleccionada}
+                    onChange={(e) => seleccionarRubrica(e.target.value)}
+                    className="text-xs border border-black/10 rounded-md px-2 py-1 outline-none"
+                  >
+                    <option value="">Cargar rúbrica guardada…</option>
+                    {rubricasGuardadas.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.titulo}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <textarea
                 value={rubrica}
                 onChange={(e) => setRubrica(e.target.value)}
@@ -139,6 +220,43 @@ export default function Dashboard() {
                 className="w-full rounded-lg border border-black/10 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition resize-none"
                 required
               />
+
+              {/* Guardar rúbrica para reutilizar */}
+              {!mostrarGuardar ? (
+                <button
+                  type="button"
+                  onClick={() => setMostrarGuardar(true)}
+                  disabled={!rubrica.trim()}
+                  className="mt-2 text-xs text-[color:var(--color-indigo)] hover:underline disabled:text-black/30 disabled:no-underline"
+                >
+                  Guardar esta rúbrica para usarla luego
+                </button>
+              ) : (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={tituloNuevaRubrica}
+                    onChange={(e) => setTituloNuevaRubrica(e.target.value)}
+                    placeholder="Nombre para esta rúbrica (ej. Examen Matemáticas 3ºESO)"
+                    className="flex-1 text-xs rounded-md border border-black/10 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={guardarRubricaActual}
+                    disabled={guardandoRubrica || !tituloNuevaRubrica.trim()}
+                    className="text-xs bg-[color:var(--color-indigo)] text-white rounded-md px-3 py-2 disabled:opacity-50"
+                  >
+                    {guardandoRubrica ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuardar(false)}
+                    className="text-xs text-[color:var(--color-ink)]/50 px-2"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -179,7 +297,6 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* Columna derecha: resultado */}
         <section>
           {!resultado && !corrigiendo && (
             <div className="h-full flex items-center justify-center text-center text-[color:var(--color-ink)]/40 border-2 border-dashed border-black/10 rounded-2xl p-12">
@@ -197,7 +314,6 @@ export default function Dashboard() {
 
           {resultado && (
             <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 relative">
-              {/* El sello de nota: elemento distintivo */}
               <div className="grade-stamp absolute -top-5 -right-3 sm:right-4 rounded-full w-24 h-24 flex flex-col items-center justify-center bg-white">
                 <span className="font-mono-score text-2xl font-semibold leading-none">
                   {resultado.nota_total}
