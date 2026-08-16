@@ -10,23 +10,18 @@ import { auth, db } from '@/lib/firebase';
 export default function Dashboard() {
   const router = useRouter();
 
-  // Guardamos el usuario logueado. Empieza en null mientras comprobamos
-  // si hay sesión activa o no.
   const [usuario, setUsuario] = useState(null);
   const [comprobandoSesion, setComprobandoSesion] = useState(true);
 
-  // Datos del formulario
   const [rubrica, setRubrica] = useState('');
   const [archivo, setArchivo] = useState(null);
+  const [nombreArchivo, setNombreArchivo] = useState('');
 
-  // Estado del proceso de corrección
   const [corrigiendo, setCorrigiendo] = useState(false);
-  const [resultado, setResultado] = useState(null); // aquí guardamos el JSON que devuelve la IA
+  const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
   const [guardado, setGuardado] = useState(false);
 
-  // 1. Al cargar la página, comprobamos si hay un profesor logueado.
-  // Si no lo hay, lo mandamos de vuelta al login.
   useEffect(() => {
     const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
       if (usuarioActual) {
@@ -36,7 +31,6 @@ export default function Dashboard() {
       }
       setComprobandoSesion(false);
     });
-    // Limpiamos el listener cuando el componente se desmonta
     return () => desuscribir();
   }, [router]);
 
@@ -45,7 +39,6 @@ export default function Dashboard() {
     router.push('/login');
   };
 
-  // 2. Envía el archivo + rúbrica al endpoint /api/corregir
   const corregirExamen = async (e) => {
     e.preventDefault();
     setError('');
@@ -83,7 +76,6 @@ export default function Dashboard() {
     }
   };
 
-  // 3. Cuando el profesor revisa el resultado y confirma, lo guardamos en Firestore
   const confirmarYGuardar = async () => {
     try {
       await addDoc(collection(db, 'correcciones'), {
@@ -99,87 +91,165 @@ export default function Dashboard() {
     }
   };
 
-  // Mientras comprobamos si hay sesión, no mostramos nada todavía
-  // (evita un parpadeo raro mostrando el formulario y luego redirigiendo)
   if (comprobandoSesion) {
-    return <p style={{ padding: '20px' }}>Cargando...</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[color:var(--color-paper)]">
+        <p className="text-[color:var(--color-ink)]/60">Cargando…</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: '700px', margin: '40px auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>AutoTeacher</h1>
-        <button onClick={cerrarSesion} style={{ padding: '8px 12px' }}>
-          Cerrar sesión
-        </button>
-      </div>
-      <p>Conectado como: {usuario?.email}</p>
-
-      <hr style={{ margin: '20px 0' }} />
-
-      <h2>Corregir una tarea</h2>
-
-      <form onSubmit={corregirExamen}>
-        <div style={{ marginBottom: '12px' }}>
-          <label>Rúbrica de corrección</label>
-          <br />
-          <textarea
-            value={rubrica}
-            onChange={(e) => setRubrica(e.target.value)}
-            rows={6}
-            placeholder="Escribe aquí los criterios de corrección: preguntas, puntos por pregunta, qué se considera correcto..."
-            style={{ width: '100%', padding: '8px' }}
-            required
-          />
-        </div>
-
-        <div style={{ marginBottom: '12px' }}>
-          <label>Foto o PDF de la tarea</label>
-          <br />
-          {/* "capture" hace que en móvil se abra directamente la cámara */}
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            capture="environment"
-            onChange={(e) => setArchivo(e.target.files[0])}
-            required
-          />
-        </div>
-
-        <button type="submit" disabled={corrigiendo} style={{ padding: '10px 16px' }}>
-          {corrigiendo ? 'Corrigiendo...' : 'Corregir'}
-        </button>
-      </form>
-
-      {error && <p style={{ color: 'red', marginTop: '12px' }}>{error}</p>}
-
-      {/* 4. Mostramos el resultado para que el profesor lo revise antes de confirmar */}
-      {resultado && (
-        <div style={{ marginTop: '30px', padding: '16px', border: '1px solid #ccc' }}>
-          <h3>
-            Resultado: {resultado.nota_total} / {resultado.nota_sobre}
-          </h3>
-
-          {resultado.preguntas.map((pregunta) => (
-            <div key={pregunta.numero} style={{ marginBottom: '12px' }}>
-              <strong>
-                Pregunta {pregunta.numero}: {pregunta.puntos_obtenidos} / {pregunta.puntos_totales} puntos
-              </strong>
-              <p style={{ margin: '4px 0', color: '#555' }}>{pregunta.comentario}</p>
-            </div>
-          ))}
-
-          <p style={{ fontStyle: 'italic' }}>{resultado.feedback_general}</p>
-
-          {!guardado ? (
-            <button onClick={confirmarYGuardar} style={{ padding: '10px 16px', marginTop: '10px' }}>
-              Confirmar y guardar
+    <div className="min-h-screen bg-[color:var(--color-paper)]">
+      {/* Cabecera */}
+      <header className="bg-[color:var(--color-pine)] text-white">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="font-display italic text-2xl">
+            Auto<span className="text-[color:var(--color-gold)]">Teacher</span>
+          </h1>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-white/70 hidden sm:inline">{usuario?.email}</span>
+            <button
+              onClick={cerrarSesion}
+              className="rounded-lg border border-white/25 px-3 py-1.5 hover:bg-white/10 transition"
+            >
+              Cerrar sesión
             </button>
-          ) : (
-            <p style={{ color: 'green', fontWeight: 'bold' }}>✓ Guardado correctamente</p>
-          )}
+          </div>
         </div>
-      )}
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 py-10 grid gap-8 md:grid-cols-2">
+        {/* Columna izquierda: formulario */}
+        <section className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 h-fit">
+          <h2 className="font-display text-xl text-[color:var(--color-pine)] mb-4">
+            Corregir una tarea
+          </h2>
+
+          <form onSubmit={corregirExamen} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
+                Rúbrica de corrección
+              </label>
+              <textarea
+                value={rubrica}
+                onChange={(e) => setRubrica(e.target.value)}
+                rows={7}
+                placeholder="Escribe aquí los criterios: preguntas, puntos por pregunta, qué se considera correcto…"
+                className="w-full rounded-lg border border-black/10 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition resize-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
+                Foto o PDF de la tarea
+              </label>
+              <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-black/15 hover:border-[color:var(--color-indigo)] px-4 py-8 cursor-pointer transition text-center">
+                <span className="text-sm text-[color:var(--color-ink)]/70">
+                  {nombreArchivo || 'Toca para hacer una foto o elegir un archivo'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  onChange={(e) => {
+                    setArchivo(e.target.files[0]);
+                    setNombreArchivo(e.target.files[0]?.name || '');
+                  }}
+                  required
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={corrigiendo}
+              className="w-full rounded-lg bg-[color:var(--color-indigo)] hover:bg-[color:var(--color-indigo-light)] disabled:opacity-60 text-white font-medium py-3 transition shadow-sm"
+            >
+              {corrigiendo ? 'Corrigiendo…' : 'Corregir'}
+            </button>
+          </form>
+
+          {error && (
+            <p className="mt-4 text-sm text-[color:var(--color-red-pen-dark)] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+        </section>
+
+        {/* Columna derecha: resultado */}
+        <section>
+          {!resultado && !corrigiendo && (
+            <div className="h-full flex items-center justify-center text-center text-[color:var(--color-ink)]/40 border-2 border-dashed border-black/10 rounded-2xl p-12">
+              <p className="font-display italic text-lg">
+                El resultado de la corrección aparecerá aquí
+              </p>
+            </div>
+          )}
+
+          {corrigiendo && (
+            <div className="h-full flex items-center justify-center text-center text-[color:var(--color-ink)]/50 rounded-2xl p-12">
+              <p>Corrigiendo con IA…</p>
+            </div>
+          )}
+
+          {resultado && (
+            <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6 relative">
+              {/* El sello de nota: elemento distintivo */}
+              <div className="grade-stamp absolute -top-5 -right-3 sm:right-4 rounded-full w-24 h-24 flex flex-col items-center justify-center bg-white">
+                <span className="font-mono-score text-2xl font-semibold leading-none">
+                  {resultado.nota_total}
+                </span>
+                <span className="font-mono-score text-xs opacity-70">
+                  / {resultado.nota_sobre}
+                </span>
+              </div>
+
+              <h3 className="font-display text-xl text-[color:var(--color-pine)] mb-5 pr-20">
+                Resultado de la corrección
+              </h3>
+
+              <div className="space-y-4">
+                {resultado.preguntas.map((pregunta) => (
+                  <div
+                    key={pregunta.numero}
+                    className="border-l-2 border-[color:var(--color-red-pen)]/40 pl-4"
+                  >
+                    <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+                      Pregunta {pregunta.numero}{' '}
+                      <span className="font-mono-score text-[color:var(--color-red-pen-dark)]">
+                        {pregunta.puntos_obtenidos}/{pregunta.puntos_totales}
+                      </span>
+                    </p>
+                    <p className="text-sm text-[color:var(--color-ink)]/70 mt-0.5">
+                      {pregunta.comentario}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <p className="font-display italic text-[color:var(--color-ink)]/80 mt-6 pt-5 border-t border-black/5">
+                {resultado.feedback_general}
+              </p>
+
+              {!guardado ? (
+                <button
+                  onClick={confirmarYGuardar}
+                  className="mt-6 w-full rounded-lg bg-[color:var(--color-pine)] hover:bg-[color:var(--color-pine-light)] text-white font-medium py-3 transition shadow-sm"
+                >
+                  Confirmar y guardar
+                </button>
+              ) : (
+                <p className="mt-6 text-center text-sm font-medium text-[color:var(--color-pine)] bg-[color:var(--color-paper)] rounded-lg py-2.5">
+                  ✓ Guardado correctamente
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

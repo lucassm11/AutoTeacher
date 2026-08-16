@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
+/* --- Paleta de AutoTeacher --- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-paper: #eef0e9; /* papel: fondo principal */
+  --color-paper-line: #dbe0d2; /* rayas del papel pautado */
+  --color-ink: #1f2a24; /* texto principal */
+  --color-pine: #1b3a32; /* pizarra: cabeceras, superficies oscuras */
+  --color-pine-light: #24493f;
+  --color-indigo: #2f4468; /* azul tinta: color de marca, botones principales */
+  --color-indigo-light: #3d5a88;
+  --color-red-pen: #c43e3e; /* rojo lápiz: acento de corrección/feedback */
+  --color-red-pen-dark: #a32f2f;
+  --color-gold: #e3a23c; /* dorado: pequeños destellos */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body), sans-serif;
+}
+
+/* Utilidades de tipografía */
+.font-display {
+  font-family: var(--font-display), serif;
+}
+
+.font-mono-score {
+  font-family: var(--font-mono), monospace;
+}
+
+/* Fondo de papel pautado, usado detrás del login */
+.notebook-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    var(--color-paper-line) 32px
+  );
+}
+
+/* El sello circular de nota: elemento distintivo de la marca */
+.grade-stamp {
+  border: 3px dashed var(--color-red-pen);
+  color: var(--color-red-pen);
+  transform: rotate(-6deg);
 }

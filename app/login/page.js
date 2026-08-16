@@ -1,8 +1,4 @@
 // app/login/page.js
-//
-// 'use client' es obligatorio aquí: esta página necesita interactividad
-// en el navegador (formularios, clicks, estado), a diferencia de las
-// páginas normales de Next.js que se generan en el servidor.
 'use client';
 
 import { useState } from 'react';
@@ -14,37 +10,27 @@ import {
 import { auth } from '@/lib/firebase';
 
 export default function Login() {
-  // Guardamos en estado lo que el profesor escribe en el formulario
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Controla si mostramos el formulario de "crear cuenta" o el de "entrar"
   const [modoRegistro, setModoRegistro] = useState(false);
-  // Para mostrar mensajes de error si algo falla
   const [error, setError] = useState('');
-  // Para desactivar el botón mientras se procesa, y que no hagan doble click
   const [cargando, setCargando] = useState(false);
 
   const router = useRouter();
 
-  // Esta función se ejecuta al enviar el formulario (tanto en registro como en login)
   const manejarEnvio = async (e) => {
-    e.preventDefault(); // evita que la página se recargue, como hace un formulario normal
+    e.preventDefault();
     setError('');
     setCargando(true);
 
     try {
       if (modoRegistro) {
-        // Crea una cuenta nueva con email y contraseña
         await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        // Inicia sesión con una cuenta ya existente
         await signInWithEmailAndPassword(auth, email, password);
       }
-      // Si todo fue bien, mandamos al profesor a la pantalla principal
       router.push('/dashboard');
     } catch (err) {
-      // Firebase devuelve códigos de error en inglés tipo "auth/wrong-password".
-      // Los traducimos a mensajes simples para el profesor.
       const mensajes = {
         'auth/email-already-in-use': 'Ese email ya tiene una cuenta. Prueba a iniciar sesión.',
         'auth/invalid-email': 'El email no tiene un formato válido.',
@@ -60,58 +46,80 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '80px auto', padding: '20px' }}>
-      <h1>AutoTeacher</h1>
-      <h2>{modoRegistro ? 'Crear cuenta' : 'Iniciar sesión'}</h2>
-
-      <form onSubmit={manejarEnvio}>
-        <div style={{ marginBottom: '12px' }}>
-          <label>Email</label>
-          <br />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px' }}
-          />
+    <div className="notebook-lines min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Wordmark */}
+        <div className="text-center mb-8">
+          <h1 className="font-display italic text-5xl text-[color:var(--color-pine)]">
+            Auto<span className="text-[color:var(--color-red-pen)]">Teacher</span>
+          </h1>
+          <p className="mt-2 text-sm tracking-wide text-[color:var(--color-ink)]/60">
+            Corrección con IA, revisada por ti
+          </p>
         </div>
 
-        <div style={{ marginBottom: '12px' }}>
-          <label>Contraseña</label>
-          <br />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            style={{ width: '100%', padding: '8px' }}
-          />
+        {/* Tarjeta */}
+        <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border-l-4 border-[color:var(--color-red-pen)] p-8">
+          <h2 className="font-display text-2xl text-[color:var(--color-pine)] mb-6">
+            {modoRegistro ? 'Crear cuenta' : 'Bienvenido de nuevo'}
+          </h2>
+
+          <form onSubmit={manejarEnvio} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-lg border border-black/10 px-4 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition"
+                placeholder="tu@centro.edu"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
+                Contraseña
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-lg border border-black/10 px-4 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-[color:var(--color-red-pen-dark)] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full rounded-lg bg-[color:var(--color-indigo)] hover:bg-[color:var(--color-indigo-light)] disabled:opacity-60 text-white font-medium py-3 transition shadow-sm"
+            >
+              {cargando ? 'Procesando…' : modoRegistro ? 'Crear cuenta' : 'Entrar'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-[color:var(--color-ink)]/70">
+            {modoRegistro ? '¿Ya tienes cuenta?' : '¿Todavía no tienes cuenta?'}{' '}
+            <button
+              onClick={() => setModoRegistro(!modoRegistro)}
+              className="text-[color:var(--color-indigo)] font-medium underline underline-offset-2 hover:text-[color:var(--color-indigo-light)]"
+            >
+              {modoRegistro ? 'Inicia sesión' : 'Regístrate'}
+            </button>
+          </p>
         </div>
-
-        {error && (
-          <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={cargando}
-          style={{ width: '100%', padding: '10px', marginTop: '10px' }}
-        >
-          {cargando ? 'Procesando...' : modoRegistro ? 'Crear cuenta' : 'Entrar'}
-        </button>
-      </form>
-
-      <p style={{ marginTop: '16px', fontSize: '14px' }}>
-        {modoRegistro ? '¿Ya tienes cuenta?' : '¿Todavía no tienes cuenta?'}{' '}
-        <button
-          onClick={() => setModoRegistro(!modoRegistro)}
-          style={{ textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer' }}
-        >
-          {modoRegistro ? 'Inicia sesión' : 'Regístrate'}
-        </button>
-      </p>
+      </div>
     </div>
   );
 }
