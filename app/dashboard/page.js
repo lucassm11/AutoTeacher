@@ -15,8 +15,17 @@ import {
   doc,
   getDoc,
   setDoc,
+  increment,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+
+// Límites diarios del plan gratuito. El plan Pro no tiene límite.
+const LIMITE_CORRECCIONES_GRATIS = 5;
+const LIMITE_ANOTACIONES_GRATIS = 2;
+
+// Fecha de hoy en formato "AAAA-MM-DD", usada como parte del id del
+// documento de uso diario, para que el contador se reinicie solo cada día.
+const fechaHoy = () => new Date().toISOString().slice(0, 10);
 
 export default function Dashboard() {
   const router = useRouter();
@@ -49,6 +58,9 @@ export default function Dashboard() {
   const [generandoImagen, setGenerandoImagen] = useState(false);
   const [errorImagen, setErrorImagen] = useState('');
 
+  // --- Uso diario (solo aplica límite al plan gratuito) ---
+  const [usoHoy, setUsoHoy] = useState({ correcciones: 0, anotaciones: 0 });
+
   useEffect(() => {
     const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
       if (usuarioActual) {
@@ -61,11 +73,12 @@ export default function Dashboard() {
     return () => desuscribir();
   }, [router]);
 
-  // Cuando ya sabemos quién es el profesor, cargamos sus rúbricas y su perfil (plan)
+  // Cuando ya sabemos quién es el profesor, cargamos sus rúbricas, su perfil y su uso de hoy
   useEffect(() => {
     if (!usuario) return;
     cargarRubricasGuardadas();
     cargarOCrearPerfil();
+    cargarUsoDiario();
   }, [usuario]);
 
   const cargarOCrearPerfil = async () => {
@@ -81,6 +94,46 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error('Error al cargar el perfil:', err);
+    }
+  };
+
+  const idUsoHoy = () => `${usuario.uid}_${fechaHoy()}`;
+
+  const cargarUsoDiario = async () => {
+    try {
+      const usoRef = doc(db, 'uso_diario', `${usuario.uid}_${fechaHoy()}`);
+      const usoSnap = await getDoc(usoRef);
+      if (usoSnap.exists()) {
+        setUsoHoy({
+          correcciones: usoSnap.data().correcciones || 0,
+          anotaciones: usoSnap.data().anotaciones || 0,
+        });
+      } else {
+        setUsoHoy({ correcciones: 0, anotaciones: 0 });
+      }
+    } catch (err) {
+      console.error('Error al cargar el uso diario:', err);
+    }
+  };
+
+  // Suma 1 al contador indicado ("correcciones" o "anotaciones") de hoy.
+  // Usamos setDoc con merge para crear el documento si es la primera acción
+  // del día, o incrementar si ya existía.
+  const incrementarUsoDiario = async (campo) => {
+    try {
+      const usoRef = doc(db, 'uso_diario', idUsoHoy());
+      await setDoc(
+        usoRef,
+        {
+          profesor_id: usuario.uid,
+          fecha: fechaHoy(),
+          [campo]: increment(1),
+        },
+        { merge: true }
+      );
+      setUsoHoy((prev) => ({ ...prev, [campo]: prev[campo] + 1 }));
+    } catch (err) {
+      console.error('Error al actualizar el uso diario:', err);
     }
   };
 
@@ -148,6 +201,12 @@ export default function Dashboard() {
       return;
     }
 
+    // Límite diario del plan gratuito
+    if (plan !== 'pro' && usoHoy.correcciones >= LIMITE_CORRECCIONES_GRATIS) {
+      setError('LIMITE_CORRECCIONES');
+      return;
+    }
+
     setCorrigiendo(true);
 
     try {
@@ -168,11 +227,15 @@ export default function Dashboard() {
       }
 
       setResultado(datos);
+      incrementarUsoDiario('correcciones');
 
-      // Si es una foto (no PDF), generamos automáticamente la versión
-      // anotada visualmente, sin que el profesor tenga que pedirlo.
-      if (archivo.type?.startsWith('image/')) {
+      // Si es una foto (no PDF) y todavía no ha superado su límite diario
+      // de fotos anotadas, generamos automáticamente la versión visual.
+      const puedeAnotar = plan === 'pro' || usoHoy.anotaciones < LIMITE_ANOTACIONES_GRATIS;
+      if (archivo.type?.startsWith('image/') && puedeAnotar) {
         generarImagenAnotada(datos);
+      } else if (archivo.type?.startsWith('image/')) {
+        setErrorImagen('LIMITE_ANOTACIONES');
       }
     } catch (err) {
       setError(err.message);
@@ -202,6 +265,7 @@ export default function Dashboard() {
       }
 
       setImagenAnotada(datos.imagen_base64);
+      incrementarUsoDiario('anotaciones');
     } catch (err) {
       setErrorImagen(err.message);
     } finally {
@@ -411,12 +475,36 @@ export default function Dashboard() {
             >
               {corrigiendo ? 'Corrigiendo…' : 'Corregir'}
             </button>
+
+            {plan !== 'pro' && (
+              <p className="text-center text-xs text-[color:var(--color-ink)]/50">
+                {Math.max(LIMITE_CORRECCIONES_GRATIS - usoHoy.correcciones, 0)} de{' '}
+                {LIMITE_CORRECCIONES_GRATIS} correcciones gratuitas restantes hoy
+              </p>
+            )}
           </form>
 
-          {error && (
-            <p className="mt-4 text-sm text-[color:var(--color-red-pen-dark)] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
-            </p>
+          {error === 'LIMITE_CORRECCIONES' ? (
+            <div className="mt-4 rounded-lg bg-[color:var(--color-indigo)]/5 border border-[color:var(--color-indigo)]/30 px-4 py-3">
+              <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+                Has alcanzado tus {LIMITE_CORRECCIONES_GRATIS} correcciones gratuitas de hoy
+              </p>
+              <p className="text-xs text-[color:var(--color-ink)]/60 mt-1 mb-2">
+                Pasa a Pro para corregir sin límite diario.
+              </p>
+              <Link
+                href="/#planes"
+                className="inline-block text-sm bg-[color:var(--color-indigo)] text-white rounded-lg px-4 py-2 hover:bg-[color:var(--color-indigo-light)] transition"
+              >
+                Ver planes
+              </Link>
+            </div>
+          ) : (
+            error && (
+              <p className="mt-4 text-sm text-[color:var(--color-red-pen-dark)] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )
           )}
         </section>
 
@@ -455,9 +543,13 @@ export default function Dashboard() {
                   <p className="text-xs font-semibold text-[color:var(--color-ink)] mb-1">
                     ⚠ Corrección generada en Modo Autopiloto — revisa con especial atención
                   </p>
+                  {resultado.asignatura_detectada && (
+                    <p className="text-xs text-[color:var(--color-ink)]/70 mb-1">
+                      Asignatura detectada: <strong>{resultado.asignatura_detectada}</strong>
+                    </p>
+                  )}
                   <p className="text-xs text-[color:var(--color-ink)]/70">
-                    La IA definió sus propios criterios de corrección:{' '}
-                    {resultado.criterios_aplicados}
+                    Criterios aplicados: {resultado.criterios_aplicados}
                   </p>
                 </div>
               )}
@@ -497,8 +589,25 @@ export default function Dashboard() {
                   </p>
                 )}
 
-                {errorImagen && (
-                  <p className="text-sm text-[color:var(--color-ink)]/50">{errorImagen}</p>
+                {errorImagen === 'LIMITE_ANOTACIONES' ? (
+                  <div className="rounded-lg bg-[color:var(--color-indigo)]/5 border border-[color:var(--color-indigo)]/30 px-4 py-3">
+                    <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+                      Has alcanzado tus {LIMITE_ANOTACIONES_GRATIS} fotos corregidas gratuitas de hoy
+                    </p>
+                    <p className="text-xs text-[color:var(--color-ink)]/60 mt-1 mb-2">
+                      La nota y el feedback de arriba sí se han guardado con normalidad. Pasa a Pro para generar fotos anotadas sin límite diario.
+                    </p>
+                    <Link
+                      href="/#planes"
+                      className="inline-block text-sm bg-[color:var(--color-indigo)] text-white rounded-lg px-4 py-2 hover:bg-[color:var(--color-indigo-light)] transition"
+                    >
+                      Ver planes
+                    </Link>
+                  </div>
+                ) : (
+                  errorImagen && (
+                    <p className="text-sm text-[color:var(--color-ink)]/50">{errorImagen}</p>
+                  )
                 )}
 
                 {imagenAnotada && (

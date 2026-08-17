@@ -10,6 +10,26 @@
 
 import sharp from 'sharp';
 
+// Fuente incrustada directamente en el código, en vez de depender de un
+// archivo aparte o de las fuentes que tenga instaladas el servidor.
+// Esto es necesario porque los servidores de Vercel (y la mayoría de
+// entornos "serverless") NO tienen fuentes del sistema instaladas, así que
+// cualquier texto dibujado con una fuente normal aparecía en blanco o con
+// cuadraditos en vez de las letras. Es una versión recortada de DejaVu Sans
+// Bold que solo incluye los caracteres que realmente usamos (números,
+// "." "/" y las letras de "AutoGradely"), por eso pesa solo unos pocos KB
+// en vez de los ~700KB de la fuente completa.
+const FUENTE_BASE64 = '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';
+
+const definicionFuente = `
+  <style>
+    @font-face {
+      font-family: 'AutoGradelyMarker';
+      src: url(data:font/ttf;base64,${FUENTE_BASE64}) format('truetype');
+    }
+    text { font-family: 'AutoGradelyMarker'; }
+  </style>`;
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -100,29 +120,29 @@ export async function POST(request) {
               <path d="M-2 -2 L20 20 M20 -2 L-2 20" stroke="#C43E3E" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
             </g>`;
         } else {
-          // Puntuación parcial: fracción de puntos con trazo escrito a mano
+          // Puntuación parcial: fracción de puntos, con la fuente incrustada
+          // (ya no cursiva/Comic Sans, porque esas no existen en el
+          // servidor; usamos nuestra fuente propia en negrita)
           return `
-            <g transform="translate(${margenX - 14}, ${y}) rotate(${inclinacion * 0.5})" filter="url(#trazo-${semilla})">
-              <text x="0" y="14" font-family="'Segoe Script','Comic Sans MS',cursive" font-size="21" font-weight="bold" fill="#C43E3E">${p.puntos_obtenidos}/${p.puntos_totales}</text>
+            <g transform="translate(${margenX - 16}, ${y}) rotate(${inclinacion * 0.5})" filter="url(#trazo-${semilla})">
+              <text x="0" y="14" font-size="20" font-weight="bold" fill="#C43E3E">${p.puntos_obtenidos}/${p.puntos_totales}</text>
             </g>`;
         }
       })
       .join('');
 
-    // 4. El sello de nota final, igual que el de la interfaz, pero
+    // 5. El sello de nota final, igual que el de la interfaz, pero
     // dibujado directamente sobre la imagen, arriba a la derecha, con el
     // mismo efecto de trazo irregular para que combine con las marcas.
     filtrosUsados += filtroTrazoManual('sello');
     const selloSvg = `
       <g transform="translate(${ancho - 130}, 30) rotate(-8)">
         <circle cx="50" cy="50" r="48" fill="white" fill-opacity="0.9" stroke="#C43E3E" stroke-width="3.5" stroke-dasharray="7,6" filter="url(#trazo-sello)"/>
-        <text x="50" y="48" font-family="monospace" font-size="26" font-weight="bold" fill="#C43E3E" text-anchor="middle">${resultado.nota_total}</text>
-        <text x="50" y="68" font-family="monospace" font-size="14" fill="#C43E3E" text-anchor="middle" opacity="0.8">/ ${resultado.nota_sobre}</text>
+        <text x="50" y="48" font-size="26" font-weight="bold" fill="#C43E3E" text-anchor="middle">${resultado.nota_total}</text>
+        <text x="50" y="68" font-size="14" fill="#C43E3E" text-anchor="middle" opacity="0.8">/ ${resultado.nota_sobre}</text>
       </g>`;
 
-    // 5. Marca de agua repetida solo para el plan gratuito.
-    // Subida de opacidad respecto a la primera versión, que se perdía
-    // demasiado entre el contenido del examen.
+    // 6. Marca de agua repetida solo para el plan gratuito.
     let marcaAguaSvg = '';
     if (plan !== 'pro') {
       const filas = [];
@@ -131,7 +151,7 @@ export async function POST(request) {
       for (let y = 0; y < alto + espacioY; y += espacioY) {
         for (let x = 0; x < ancho + espacioX; x += espacioX) {
           filas.push(
-            `<text x="${x}" y="${y}" font-family="sans-serif" font-size="19" font-weight="600" fill="#1B3A32" fill-opacity="0.28" transform="rotate(-25 ${x} ${y})">AutoGradely</text>`
+            `<text x="${x}" y="${y}" font-size="19" font-weight="bold" fill="#1B3A32" fill-opacity="0.28" transform="rotate(-25 ${x} ${y})">AutoGradely</text>`
           );
         }
       }
@@ -140,13 +160,14 @@ export async function POST(request) {
 
     const overlaySvg = `
       <svg width="${ancho}" height="${alto}" xmlns="http://www.w3.org/2000/svg">
+        ${definicionFuente}
         <defs>${filtrosUsados}</defs>
         ${marcasSvg}
         ${selloSvg}
         ${marcaAguaSvg}
       </svg>`;
 
-    // 5. Componemos la imagen original + el SVG encima, y la exportamos.
+    // 7. Componemos la imagen original + el SVG encima, y la exportamos.
     const imagenFinal = await imagenBase
       .composite([{ input: Buffer.from(overlaySvg), top: 0, left: 0 }])
       .png()

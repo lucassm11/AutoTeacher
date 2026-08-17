@@ -51,17 +51,27 @@ contenido del documento, qué se está preguntando y cuál sería una correcció
 justa y rigurosa, como la haría un profesor experimentado en esa materia.
 
 INSTRUCCIONES:
+- Primero, identifica de qué asignatura o tipo de examen se trata (por ejemplo: Lengua/idioma, Matemáticas, Ciencias Naturales, Historia, etc.) a partir del contenido, el enunciado y el tipo de preguntas. Indica esta asignatura detectada en el campo "asignatura_detectada".
+- Adapta el rigor de corrección según la asignatura detectada:
+  - Si es un examen de Lengua o de un idioma: penaliza también las faltas de ortografía, tildes y errores gramaticales en las respuestas escritas, no solo si la idea es correcta.
+  - Si es un examen de Matemáticas: penaliza errores de cálculo y de procedimiento, aunque el resultado final sea correcto por casualidad, y valora positivamente un procedimiento correcto aunque el resultado final tenga un error de cálculo puntual.
+  - Si es de Ciencias, Historia u otra asignatura de contenido: valora la precisión y completitud de la respuesta según el conocimiento esperado para el nivel del examen.
+  - Si no puedes determinar la asignatura con claridad, aplica un criterio general de corrección justa y razonable.
 - Identifica cada pregunta o ejercicio visible en el documento.
 - Define tú mismo los criterios de puntuación de cada pregunta, de forma proporcional y razonable según su dificultad, hasta sumar 10 puntos en total.
 - Corrige con rigor, igual que si tuvieras una rúbrica oficial delante.
-- Explica en "criterios_aplicados" un resumen breve de qué criterios usaste para puntuar, para que el profesor pueda revisarlos antes de confirmar.
+- Explica en "criterios_aplicados" un resumen breve de qué criterios usaste para puntuar (incluyendo cómo influyó la asignatura detectada), para que el profesor pueda revisarlos antes de confirmar.
 - Para cada pregunta, indica en "posicion_y" un número del 0 al 1000 que represente la posición vertical aproximada de esa respuesta dentro de la imagen (0 = arriba del todo, 1000 = abajo del todo). Es una estimación aproximada, no necesita ser exacta.
 - Coloca las preguntas en el array "preguntas" en el mismo orden en que aparecen de arriba a abajo en la imagen, incluso si tu "posicion_y" estimado no es del todo preciso.
-- Devuelve SOLO un JSON válido con este formato exacto, sin texto adicional antes ni después:
+- IMPORTANTE — hazlo en dos partes:
+  PARTE 1 (razonamiento libre): antes que nada, razona en texto normal, pregunta por pregunta, con calma y todo el detalle que necesites. Aquí puedes dudar, comprobar dos veces, corregirte a ti mismo si te equivocas — esta parte NO la va a ver el profesor, así que tómate tu tiempo para llegar a la conclusión correcta en cada pregunta.
+  PARTE 2 (resultado final): cuando ya estés seguro de cada respuesta, escribe en una línea, exactamente y sin nada más, el texto "@@@RESULTADO@@@", y justo después el JSON final. Este JSON debe reflejar ÚNICAMENTE tus conclusiones ya verificadas de la Parte 1 — nunca incluyas ahí dudas, correcciones a medias, ni frases como "espera" o "revisando de nuevo". El JSON debe leerse como si lo hubiera escrito un profesor totalmente seguro de cada nota, y "puntos_obtenidos" debe coincidir siempre con la conclusión final a la que llegaste en la Parte 1.
 
+Formato exacto del JSON de la Parte 2:
 {
   "nota_total": 0,
   "nota_sobre": 10,
+  "asignatura_detectada": "",
   "criterios_aplicados": "",
   "preguntas": [
     { "numero": 1, "puntos_obtenidos": 0, "puntos_totales": 0, "comentario": "", "posicion_y": 0 }
@@ -81,8 +91,11 @@ INSTRUCCIONES:
 - Si el documento no corresponde a la rúbrica, indícalo claramente en el feedback_general y pon 0 en todo.
 - Para cada pregunta, indica en "posicion_y" un número del 0 al 1000 que represente la posición vertical aproximada de esa respuesta dentro de la imagen (0 = arriba del todo, 1000 = abajo del todo). Es una estimación aproximada, no necesita ser exacta.
 - Coloca las preguntas en el array "preguntas" en el mismo orden en que aparecen de arriba a abajo en la imagen, incluso si tu "posicion_y" estimado no es del todo preciso.
-- Devuelve SOLO un JSON válido con este formato exacto, sin texto adicional antes ni después:
+- IMPORTANTE — hazlo en dos partes:
+  PARTE 1 (razonamiento libre): antes que nada, razona en texto normal, pregunta por pregunta, con calma y todo el detalle que necesites, comparando la respuesta del alumno con la rúbrica. Aquí puedes dudar, comprobar dos veces, corregirte a ti mismo si te equivocas — esta parte NO la va a ver el profesor.
+  PARTE 2 (resultado final): cuando ya estés seguro de cada respuesta, escribe en una línea, exactamente y sin nada más, el texto "@@@RESULTADO@@@", y justo después el JSON final. Este JSON debe reflejar ÚNICAMENTE tus conclusiones ya verificadas de la Parte 1 — nunca incluyas ahí dudas, correcciones a medias, ni frases como "espera" o "revisando de nuevo". "puntos_obtenidos" debe coincidir siempre con la conclusión final a la que llegaste en la Parte 1.
 
+Formato exacto del JSON de la Parte 2:
 {
   "nota_total": 0,
   "nota_sobre": 10,
@@ -124,9 +137,14 @@ INSTRUCCIONES:
       }
     }
 
-    // 6. Limpiamos y convertimos la respuesta de texto a JSON real.
+    // 6. La respuesta trae primero el razonamiento libre del modelo, y
+    // después el marcador "@@@RESULTADO@@@" seguido del JSON final.
+    // Descartamos todo lo anterior al marcador: es solo el "borrador
+    // mental" del modelo, nunca debe llegar al profesor.
     const textoRespuesta = respuesta.text;
-    const jsonLimpio = textoRespuesta.replace(/```json|```/g, '').trim();
+    const partes = textoRespuesta.split('@@@RESULTADO@@@');
+    const textoJson = partes.length > 1 ? partes[partes.length - 1] : textoRespuesta;
+    const jsonLimpio = textoJson.replace(/```json|```/g, '').trim();
     const resultado = JSON.parse(jsonLimpio);
 
     // 7. Devolvemos el resultado al navegador del profesor.
