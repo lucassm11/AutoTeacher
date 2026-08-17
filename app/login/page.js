@@ -1,14 +1,15 @@
 // app/login/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -21,6 +22,22 @@ export default function Login() {
   const [cargando, setCargando] = useState(false);
 
   const router = useRouter();
+
+  // Al volver de Google (tras la redirección de página completa),
+  // comprobamos si el login se completó con éxito y, si es así,
+  // mandamos al profesor al dashboard.
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          router.push('/dashboard');
+        }
+      })
+      .catch((err) => {
+        console.error('Error al volver de Google:', err.code, err.message);
+        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
+      });
+  }, [router]);
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
@@ -60,19 +77,14 @@ export default function Login() {
     setCargando(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.push('/dashboard');
+      // signInWithRedirect envía al profesor a la pantalla de Google y
+      // vuelve automáticamente a esta misma página al terminar (lo
+      // capturamos en el useEffect de arriba). Es más fiable que el popup,
+      // especialmente en navegadores de móvil.
+      await signInWithRedirect(auth, provider);
     } catch (err) {
-      // Dejamos el error real en la consola del navegador para poder
-      // diagnosticar si el mensaje genérico no es suficiente.
       console.error('Error al iniciar sesión con Google:', err.code, err.message);
-
-      // Si el profesor cierra la ventana de Google sin elegir cuenta,
-      // no es un error real, así que no mostramos nada en ese caso.
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
-      }
-    } finally {
+      setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
       setCargando(false);
     }
   };
