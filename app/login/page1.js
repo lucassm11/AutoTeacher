@@ -63,14 +63,10 @@ export default function Login() {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (err) {
-      // Dejamos el error real en la consola del navegador para poder
-      // diagnosticar si el mensaje genérico no es suficiente.
-      console.error('Error al iniciar sesión con Google:', err.code, err.message);
-
       // Si el profesor cierra la ventana de Google sin elegir cuenta,
       // no es un error real, así que no mostramos nada en ese caso.
       if (err.code !== 'auth/popup-closed-by-user') {
-        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
+        setError('No se pudo iniciar sesión con Google. Inténtalo de nuevo.');
       }
     } finally {
       setCargando(false);
