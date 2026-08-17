@@ -8,8 +8,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -23,21 +25,27 @@ export default function Login() {
 
   const router = useRouter();
 
-  // Al volver de Google (tras la redirección de página completa),
-  // comprobamos si el login se completó con éxito y, si es así,
-  // mandamos al profesor al dashboard.
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          router.push('/dashboard');
-        }
-      })
-      .catch((err) => {
-        console.error('Error al volver de Google:', err.code, err.message);
-        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
-      });
+    // Si venimos de una redirección a Google, esto recoge el resultado.
+    getRedirectResult(auth).catch((err) => {
+      console.error('Error al volver de Google:', err.code, err.message);
+      setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
+    });
+
+    // Red de seguridad: si por cualquier vía (popup o redirección) Firebase
+    // detecta que ya hay una sesión iniciada mientras estamos en esta
+    // página, vamos directos al dashboard. Esto cubre el caso en que
+    // getRedirectResult() no capture el resultado a tiempo por bloqueos
+    // de almacenamiento entre dominios de algunos navegadores.
+    const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
+      if (usuarioActual) {
+        router.push('/dashboard');
+      }
+    });
+
+    return () => desuscribir();
   }, [router]);
+
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
@@ -75,16 +83,31 @@ export default function Login() {
   const iniciarConGoogle = async () => {
     setError('');
     setCargando(true);
+    const provider = new GoogleAuthProvider();
+
     try {
-      const provider = new GoogleAuthProvider();
-      // signInWithRedirect envía al profesor a la pantalla de Google y
-      // vuelve automáticamente a esta misma página al terminar (lo
-      // capturamos en el useEffect de arriba). Es más fiable que el popup,
-      // especialmente en navegadores de móvil.
-      await signInWithRedirect(auth, provider);
+      // Probamos primero con ventana emergente: al ser del mismo origen
+      // que tu app, no sufre el problema de almacenamiento entre dominios
+      // que sí puede afectar a la redirección en algunos navegadores.
+      await signInWithPopup(auth, provider);
+      // Si funciona, el listener onAuthStateChanged de arriba se encarga
+      // de mandarnos al dashboard.
     } catch (err) {
-      console.error('Error al iniciar sesión con Google:', err.code, err.message);
-      setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        // El navegador bloqueó la ventana emergente: caemos a redirección
+        // de página completa como alternativa.
+        try {
+          await signInWithRedirect(auth, provider);
+          return; // la página va a navegar fuera, no hace falta seguir
+        } catch (err2) {
+          console.error('Error en redirección de Google:', err2.code, err2.message);
+          setError(`No se pudo iniciar sesión con Google (${err2.code || 'error desconocido'}).`);
+        }
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        console.error('Error al iniciar sesión con Google:', err.code, err.message);
+        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
+      }
+    } finally {
       setCargando(false);
     }
   };
