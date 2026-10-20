@@ -589,35 +589,74 @@ export default function Home() {
 
       <SectionDivider />
 
-      {/* TESTIMONIOS */}
+      {/* CASOS DE USO PEDAGÓGICO */}
       <section className="py-28 md:py-36 bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center mb-16">
-            <FloatingTag className="bg-[#6b4c9a]/[0.06] text-[#6b4c9a] border border-[#6b4c9a]/10 mb-6">Testimonios</FloatingTag>
-            <h2 className="font-display text-4xl md:text-5xl tracking-tight text-[#1a1a1a]">Profesores reales, resultados reales.</h2>
+            <FloatingTag className="bg-[#1B3A32]/[0.06] text-[#1B3A32] border border-[#1B3A32]/10 mb-6">Metodología DUA 3.0</FloatingTag>
+            <h2 className="font-display text-4xl md:text-5xl tracking-tight text-[#1a1a1a]">Casos de uso pedagógico en el aula.</h2>
+            <p className="text-[#1a1a1a]/40 text-lg max-w-2xl mx-auto mt-4">Soluciones reales y rigurosas diseñadas para las necesidades concretas de los alumnos con NEAE.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
             {[
-              { name: 'Maria L.', role: 'Prof. Primaria, Madrid', initials: 'ML', color: 'bg-[#1B3A32]', text: 'Pasaba 2 horas adaptando cada examen. Ahora lo tengo en 30 segundos. El dictamen psicopedagogico que genera es de un nivel que yo no alcanzaba.' },
-              { name: 'Carlos R.', role: 'Prof. Secundaria, Sevilla', initials: 'CR', color: 'bg-[#c43e3e]', text: 'Lo uso con mis alumnos de TDAH. Las adaptaciones incluyen justificaciones, criterios DUA y consejos de aula. No es un simple acortador de texto.' },
-              { name: 'Ana S.', role: 'Orientadora, Barcelona', initials: 'AS', color: 'bg-[#2f4468]', text: 'El informe DUA que genera es impecable. Lo aportamos en las reuniones de CCP y facilita enormemente la justificacion tecnica de las medidas adoptadas.' },
-            ].map((t) => (
-              <div key={t.name} className="bg-[#faf8f5] rounded-2xl border border-black/[0.04] p-7 hover:shadow-lg hover:shadow-black/[0.04] transition-all duration-500 hover:-translate-y-1">
-                <div className="flex items-center gap-1 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-[#e3a23c]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                  ))}
-                </div>
-                <p className="text-sm text-[#1a1a1a]/60 leading-relaxed mb-6">&quot;{t.text}&quot;</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-black/[0.04]">
-                  <div className={'w-9 h-9 rounded-full ' + t.color + ' flex items-center justify-center text-[10px] text-white font-bold'}>{t.initials}</div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#1a1a1a]">{t.name}</p>
-                    <p className="text-xs text-[#1a1a1a]/30">{t.role}</p>
+              {
+                icon: '🎯',
+                title: 'TDAH y Fatiga Cognitiva',
+                tag: 'Neurodesarrollo',
+                color: 'bg-[#1B3A32]',
+                desc: 'Desglose de consignas compuestas en subtareas numeradas y apoyos visuales de foco para reducir la saturación ejecutiva sin reducir los saberes básicos evaluados.'
+              },
+              {
+                icon: '📖',
+                title: 'Dislexia y Lectoescritura',
+                tag: 'Acceso a la información',
+                color: 'bg-[#2d6b5a]',
+                desc: 'Ajuste de espaciado interlineal, tipografía amigable y simplificación de la complejidad sintáctica en enunciados, permitiendo medir conocimientos y no la barrera de decodificación.'
+              },
+              {
+                icon: '📋',
+                title: 'Dictamen para CCP e Inspección',
+                tag: 'Seguridad Técnico-Jurídica',
+                color: 'bg-[#2f4468]',
+                desc: 'Generación simultánea de un informe pedagógico con la trazabilidad curricular oficial (LOMLOE Art. 71) para archivar en el expediente del alumno ante cualquier requerimiento.'
+              },
+            ].map((c) => (
+              <div key={c.title} className="bg-[#faf8f5] rounded-2xl border border-black/[0.04] p-7 hover:shadow-lg hover:shadow-black/[0.04] transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl">{c.icon}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#1B3A32] bg-[#1B3A32]/[0.06] px-2.5 py-1 rounded-full border border-[#1B3A32]/10">{c.tag}</span>
                   </div>
+                  <h3 className="font-display text-lg font-bold text-[#1a1a1a] mb-2">{c.title}</h3>
+                  <p className="text-sm text-[#1a1a1a]/60 leading-relaxed">{c.desc}</p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-black/[0.04] flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#1B3A32]">Conformidad DUA 3.0</span>
+                  <span className="text-xs text-[#1a1a1a]/40">Adaptación en 3s</span>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* BANNER PROGRAMA 10 CENTROS PIONEROS */}
+          <div className="rounded-3xl bg-gradient-to-br from-[#1B3A32] to-[#152e28] text-white p-8 md:p-12 border border-[#1B3A32]/30 shadow-xl relative overflow-hidden">
+            <div className="relative z-10 max-w-3xl">
+              <span className="inline-block bg-emerald-400/20 text-emerald-300 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-emerald-400/30 mb-4">
+                Convocatoria Curso 2026-2027 · 10 Plazas
+              </span>
+              <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight mb-3">
+                Programa &quot;10 Centros Pioneros&quot;
+              </h3>
+              <p className="text-white/70 text-sm md:text-base leading-relaxed mb-6">
+                Seleccionamos 10 centros educativos para participar en el piloto de validación tecnológica inclusiva: <strong>30 días de acceso gratuito e ilimitado</strong> para todo el claustro y el Departamento de Orientación, con tarifa preferente institucional de <strong>390 € / año</strong> de por vida si decidís continuar.
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <Link href="/contacto?motivo=centros" className="bg-emerald-500 hover:bg-emerald-400 text-[#0d1614] font-bold px-6 py-3 rounded-xl transition-all text-sm">
+                  Solicitar Plaza para mi Centro &rarr;
+                </Link>
+                <span className="text-xs text-white/50">Sin compromiso · Sin instalación técnica · Factura oficial</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -770,18 +809,20 @@ export default function Home() {
             </div>
             {/* CENTROS */}
             <div className="bg-[#faf8f5] rounded-2xl border border-black/[0.06] p-8 hover:shadow-xl hover:shadow-black/[0.04] transition-all duration-500 hover:-translate-y-1">
-              <h3 className="font-display text-xl text-[#1a1a1a]">Centros</h3>
-              <p className="text-sm text-[#1a1a1a]/40 mt-1 mb-6">Colegios y academias</p>
+              <div className="inline-block bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2">Piloto 2026/27</div>
+              <h3 className="font-display text-xl text-[#1a1a1a]">Centros Pioneros</h3>
+              <p className="text-sm text-[#1a1a1a]/40 mt-1 mb-6">Acceso claustro completo</p>
               <div className="flex items-baseline gap-1 mb-6">
-                <span className="font-mono-score text-4xl font-bold text-[#1a1a1a]">A medida</span>
+                <span className="font-mono-score text-4xl font-bold text-[#1a1a1a]">390€</span>
+                <span className="text-xs text-[#1a1a1a]/40">/año centro</span>
               </div>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Todo lo de Pro incluido',
-                  'Precio por asiento',
-                  'Panel de administracion',
-                  'Soporte dedicado',
-                  'SLA garantizado',
+                  '30 días de piloto gratuito',
+                  'Licencias ilimitadas para claustro',
+                  '16 perfiles NEAE completos',
+                  'Dictámenes oficiales para CCP',
+                  'Soporte técnico y factura colegial',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-2.5 text-sm text-[#1a1a1a]/60">
                     <svg className="w-4 h-4 text-[#1B3A32] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -789,7 +830,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Link href="/contacto" className="block text-center border border-[#1B3A32]/20 text-[#1B3A32] hover:bg-[#1B3A32] hover:text-white font-semibold rounded-xl px-4 py-3 transition-all duration-300 text-sm">Hablemos</Link>
+              <Link href="/contacto?motivo=centros" className="block text-center border border-[#1B3A32]/20 text-[#1B3A32] hover:bg-[#1B3A32] hover:text-white font-semibold rounded-xl px-4 py-3 transition-all duration-300 text-sm">Solicitar plaza piloto</Link>
             </div>
           </div>
         </div>
