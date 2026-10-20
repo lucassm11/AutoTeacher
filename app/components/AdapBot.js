@@ -73,13 +73,14 @@ export default function AdapBot({ perfil, resultado, curso, materia, esPro }) {
   const suggestions = getSuggestions(perfil);
 
   useEffect(() => {
+    let t, t2;
     if (abierto) {
-      const t = setTimeout(() => { setShowPanel(true); }, 10);
-      const t2 = setTimeout(() => { inputRef.current?.focus(); }, 300);
-      return () => { clearTimeout(t); clearTimeout(t2); };
+      t = setTimeout(() => { setShowPanel(true); }, 10);
+      t2 = setTimeout(() => { inputRef.current?.focus(); }, 300);
     } else {
-      setShowPanel(false);
+      t = setTimeout(() => { setShowPanel(false); }, 0);
     }
+    return () => { clearTimeout(t); clearTimeout(t2); };
   }, [abierto]);
 
   useEffect(() => {

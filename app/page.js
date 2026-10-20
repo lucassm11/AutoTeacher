@@ -513,7 +513,7 @@ export default function Home() {
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="font-mono text-xs text-emerald-500/60 mt-1 shrink-0">P1</span>
-                    <p className="text-sm text-[#1a1a1a]/80 leading-relaxed font-medium">Completa la tabla de conjugacion del verbo "haber". Solo: Presente, Preterito, Futuro.</p>
+                    <p className="text-sm text-[#1a1a1a]/80 leading-relaxed font-medium">Completa la tabla de conjugacion del verbo &quot;haber&quot;. Solo: Presente, Preterito, Futuro.</p>
                   </div>
                   <div className="ml-7 rounded-lg bg-amber-50/60 border border-amber-200/50 p-2.5">
                     <p className="text-[11px] text-amber-900/70 leading-relaxed"><span className="font-semibold">Justificacion:</span> Se reduce de 6 tiempos a 3 para disminuir la sobrecarga de memoria de trabajo.</p>
