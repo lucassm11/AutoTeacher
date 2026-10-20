@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const dynamic = 'force-dynamic';
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || 're_build_placeholder');
+}
 
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -9,6 +13,7 @@ function escapeHtml(str) {
 
 export async function POST(request) {
   try {
+    const resend = getResend();
     const { nombre, email, asunto, mensaje } = await request.json();
 
     if (!nombre || !email || !asunto || !mensaje) {

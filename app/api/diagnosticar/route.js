@@ -2,10 +2,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 export const dynamic = 'force-dynamic';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getAI() {
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'dummy_build_key' });
+}
 
 export async function POST(request) {
   try {
+    const ai = getAI();
     const body = await request.json().catch(() => null);
     if (!body) {
       return Response.json({ error: 'Cuerpo JSON invalido.' }, { status: 400 });

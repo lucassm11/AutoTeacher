@@ -5,7 +5,9 @@ import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getAI() {
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'dummy_build_key' });
+}
 
 const LIMITE_GRATIS = 3;
 const DATA_DIR = join(process.cwd(), 'data');
@@ -35,6 +37,7 @@ function saveUsage(data) {
 
 export async function POST(request) {
   try {
+    const ai = getAI();
     const body = await request.json().catch(() => null);
 
     if (!body) {

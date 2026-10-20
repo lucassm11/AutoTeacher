@@ -2,10 +2,13 @@ import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || 're_build_placeholder');
+}
 
 export async function POST(request) {
   try {
+    const resend = getResend();
     const { email, nombre } = await request.json();
 
     if (!email) {
