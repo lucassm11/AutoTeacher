@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Demostración en Vídeo — Adapto',
   description: 'Descubre en este tour guiado por AdapBot cómo funciona la adaptación de exámenes según las directrices DUA y LOMLOE.',
