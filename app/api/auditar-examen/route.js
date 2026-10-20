@@ -1,13 +1,9 @@
 // app/api/auditar-examen/route.js
-import { GoogleGenAI, Type } from '@google/genai';
+import { generateContentWithRotation, Type } from '@/lib/gemini';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
-
-function getAI() {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'dummy_build_key' });
-}
 
 const LIMITE_GRATIS = 3;
 const DATA_DIR = join(process.cwd(), 'data');
@@ -37,7 +33,6 @@ function saveUsage(data) {
 
 export async function POST(request) {
   try {
-    const ai = getAI();
     const body = await request.json().catch(() => null);
 
     if (!body) {
@@ -170,7 +165,7 @@ DEBES GENERAR:
       });
     }
 
-    const respuesta = await ai.models.generateContent({
+    const respuesta = await generateContentWithRotation({
       model: 'gemini-3.5-flash-lite',
       contents: [{ role: 'user', parts: contentsParts }],
       config: {

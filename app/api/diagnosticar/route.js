@@ -1,14 +1,9 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { generateContentWithRotation, Type } from '@/lib/gemini';
 
 export const dynamic = 'force-dynamic';
 
-function getAI() {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'dummy_build_key' });
-}
-
 export async function POST(request) {
   try {
-    const ai = getAI();
     const body = await request.json().catch(() => null);
     if (!body) {
       return Response.json({ error: 'Cuerpo JSON invalido.' }, { status: 400 });
@@ -100,8 +95,8 @@ IMPORTANTE:
       ],
     }];
 
-    const respuesta = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+    const respuesta = await generateContentWithRotation({
+      model: 'gemini-3.5-flash-lite',
       contents,
       config: {
         systemInstruction: systemPrompt,
