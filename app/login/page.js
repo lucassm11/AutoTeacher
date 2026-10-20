@@ -1,233 +1,199 @@
-// app/login/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [modoRegistro, setModoRegistro] = useState(false);
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
-  const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
-
+export default function LoginPage() {
+  const { user, signInWithGoogle, registerWithEmail, loginWithEmail, resetPassword, loading } = useAuth();
   const router = useRouter();
 
+  const [mode, setMode] = useState('login');
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
-    // Si venimos de una redirección a Google, esto recoge el resultado.
-    getRedirectResult(auth).catch((err) => {
-      console.error('Error al volver de Google:', err.code, err.message);
-      setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
-    });
+    if (!loading && user) router.push('/auditor-dua');
+  }, [user, loading, router]);
 
-    // Red de seguridad: si por cualquier vía (popup o redirección) Firebase
-    // detecta que ya hay una sesión iniciada mientras estamos en esta
-    // página, vamos directos al dashboard. Esto cubre el caso en que
-    // getRedirectResult() no capture el resultado a tiempo por bloqueos
-    // de almacenamiento entre dominios de algunos navegadores.
-    const desuscribir = onAuthStateChanged(auth, (usuarioActual) => {
-      if (usuarioActual) {
-        router.push('/dashboard');
-      }
-    });
-
-    return () => desuscribir();
-  }, [router]);
-
-
-  const manejarEnvio = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (modoRegistro && !aceptaTerminos) {
-      setError('Debes aceptar los términos y la política de privacidad para crear una cuenta.');
-      return;
-    }
-
-    setCargando(true);
-
+    setSuccess('');
+    setSubmitting(true);
     try {
-      if (modoRegistro) {
-        await createUserWithEmailAndPassword(auth, email, password);
+      if (mode === 'register') {
+        if (!nombre.trim()) { setError('El nombre es obligatorio.'); setSubmitting(false); return; }
+        if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); setSubmitting(false); return; }
+        await registerWithEmail(email, password, nombre.trim());
+        setSuccess('¡Cuenta creada! Revisa tu bandeja de entrada.');
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await loginWithEmail(email, password);
       }
-      router.push('/dashboard');
     } catch (err) {
-      const mensajes = {
-        'auth/email-already-in-use': 'Ese email ya tiene una cuenta. Prueba a iniciar sesión.',
-        'auth/invalid-email': 'El email no tiene un formato válido.',
+      const msg = {
+        'auth/email-already-in-use': 'Este email ya está registrado. Inicia sesión.',
+        'auth/invalid-email': 'Email no válido.',
         'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
-        'auth/wrong-password': 'Contraseña incorrecta.',
-        'auth/user-not-found': 'No existe ninguna cuenta con ese email.',
         'auth/invalid-credential': 'Email o contraseña incorrectos.',
+        'auth/user-not-found': 'No existe una cuenta con este email.',
+        'auth/wrong-password': 'Contraseña incorrecta.',
+        'auth/too-many-requests': 'Demasiados intentos. Espera un momento.',
+        'auth/invalid-login-credentials': 'Email o contraseña incorrectos.',
       };
-      setError(mensajes[err.code] || 'Ha ocurrido un error. Inténtalo de nuevo.');
+      setError(msg[err.code] || err.message);
     } finally {
-      setCargando(false);
+      setSubmitting(false);
     }
   };
 
-  const iniciarConGoogle = async () => {
+  const handleResetPassword = async () => {
+    if (!email) { setError('Escribe tu email primero.'); return; }
     setError('');
-    setCargando(true);
-    const provider = new GoogleAuthProvider();
-
+    setSuccess('');
     try {
-      // Probamos primero con ventana emergente: al ser del mismo origen
-      // que tu app, no sufre el problema de almacenamiento entre dominios
-      // que sí puede afectar a la redirección en algunos navegadores.
-      await signInWithPopup(auth, provider);
-      // Si funciona, el listener onAuthStateChanged de arriba se encarga
-      // de mandarnos al dashboard.
+      await resetPassword(email);
+      setSuccess('Email de recuperación enviado. Revisa tu bandeja.');
     } catch (err) {
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        // El navegador bloqueó la ventana emergente: caemos a redirección
-        // de página completa como alternativa.
-        try {
-          await signInWithRedirect(auth, provider);
-          return; // la página va a navegar fuera, no hace falta seguir
-        } catch (err2) {
-          console.error('Error en redirección de Google:', err2.code, err2.message);
-          setError(`No se pudo iniciar sesión con Google (${err2.code || 'error desconocido'}).`);
-        }
-      } else if (err.code !== 'auth/popup-closed-by-user') {
-        console.error('Error al iniciar sesión con Google:', err.code, err.message);
-        setError(`No se pudo iniciar sesión con Google (${err.code || 'error desconocido'}).`);
-      }
-    } finally {
-      setCargando(false);
+      setError(err.code === 'auth/user-not-found' ? 'No existe una cuenta con este email.' : err.message);
     }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    setSuccess('');
+    await signInWithGoogle();
   };
 
   return (
-    <div className="notebook-lines min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[color:var(--color-paper)] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Wordmark */}
         <div className="text-center mb-8">
-          <Link href="/" className="font-display italic text-5xl text-[color:var(--color-pine)]">
-            Auto<span className="text-[color:var(--color-red-pen)]">Gradely</span>
+          <Link href="/" className="flex items-center gap-2.5 justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[color:var(--color-pine)] to-[#2d6b5a] flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 20L12 4L20 20" />
+                <path d="M7.5 14H16.5" />
+              </svg>
+            </div>
+            <span className="flex items-baseline">
+              <span className="font-display text-3xl text-[color:var(--color-ink)]">adap</span>
+              <span className="font-display text-3xl text-[color:var(--color-pine)]">to</span>
+            </span>
           </Link>
-          <p className="mt-2 text-sm tracking-wide text-[color:var(--color-ink)]/60">
-            Corrección con IA, revisada por ti
+          <p className="text-sm text-[color:var(--color-ink)]/60 mt-2">
+            {mode === 'login' ? 'Inicia sesión para auditar exámenes' : 'Crea tu cuenta gratis'}
           </p>
         </div>
 
-        {/* Tarjeta */}
-        <div className="bg-white rounded-2xl shadow-xl shadow-black/5 border-l-4 border-[color:var(--color-red-pen)] p-8">
-          <h2 className="font-display text-2xl text-[color:var(--color-pine)] mb-6">
-            {modoRegistro ? 'Crear cuenta' : 'Bienvenido de nuevo'}
-          </h2>
-
-          <form onSubmit={manejarEnvio} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-lg border border-black/10 px-4 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition"
-                placeholder="tu@centro.edu"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[color:var(--color-ink)]/80 mb-1">
-                Contraseña
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full rounded-lg border border-black/10 px-4 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--color-indigo)] transition"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-[color:var(--color-red-pen-dark)] bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            {modoRegistro && (
-              <label className="flex items-start gap-2 text-xs text-[color:var(--color-ink)]/70">
-                <input
-                  type="checkbox"
-                  checked={aceptaTerminos}
-                  onChange={(e) => setAceptaTerminos(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>
-                  Acepto los{' '}
-                  <Link href="/terminos" target="_blank" className="text-[color:var(--color-indigo)] underline">
-                    términos
-                  </Link>{' '}
-                  y la{' '}
-                  <Link href="/privacidad" target="_blank" className="text-[color:var(--color-indigo)] underline">
-                    política de privacidad
-                  </Link>
-                </span>
-              </label>
-            )}
-
-            <button
-              type="submit"
-              disabled={cargando}
-              className="w-full rounded-lg bg-[color:var(--color-indigo)] hover:bg-[color:var(--color-indigo-light)] disabled:opacity-60 text-white font-medium py-3 transition shadow-sm"
-            >
-              {cargando ? 'Procesando…' : modoRegistro ? 'Crear cuenta' : 'Entrar'}
-            </button>
-          </form>
-
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-black/10" />
-            <span className="text-xs text-[color:var(--color-ink)]/40 uppercase tracking-wide">
-              o
-            </span>
-            <div className="flex-1 h-px bg-black/10" />
-          </div>
+        <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-8 space-y-5">
+          <h1 className="font-display text-xl text-[color:var(--color-pine)] text-center">
+            {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          </h1>
 
           <button
-            onClick={iniciarConGoogle}
-            disabled={cargando}
-            className="w-full flex items-center justify-center gap-3 rounded-lg border border-black/10 hover:bg-black/5 disabled:opacity-60 font-medium py-3 transition"
+            onClick={handleGoogle}
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-3 border border-black/15 rounded-xl px-4 py-3 text-sm font-medium hover:bg-black/5 transition cursor-pointer disabled:opacity-50"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.62z" />
-              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A9 9 0 0 0 9 18z" />
-              <path fill="#FBBC05" d="M3.97 10.71a5.4 5.4 0 0 1 0-3.42V4.96H.96a9 9 0 0 0 0 8.08l3.01-2.33z" />
-              <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
             Continuar con Google
           </button>
 
-          <p className="mt-6 text-center text-sm text-[color:var(--color-ink)]/70">
-            {modoRegistro ? '¿Ya tienes cuenta?' : '¿Todavía no tienes cuenta?'}{' '}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-black/10"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-[color:var(--color-ink)]/40">o con email</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {mode === 'register' && (
+              <input
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Tu nombre"
+                className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[color:var(--color-indigo)] transition"
+              />
+            )}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
+              required
+              className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[color:var(--color-indigo)] transition"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña (mín. 6 caracteres)"
+              required
+              minLength={6}
+              className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[color:var(--color-indigo)] transition"
+            />
+
+            {error && (
+              <p className="text-xs text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-200">{error}</p>
+            )}
+            {success && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">{success}</p>
+            )}
+
             <button
-              onClick={() => setModoRegistro(!modoRegistro)}
-              className="text-[color:var(--color-indigo)] font-medium underline underline-offset-2 hover:text-[color:var(--color-indigo-light)]"
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-[color:var(--color-indigo)] hover:bg-[color:var(--color-indigo-light)] disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition cursor-pointer text-sm"
             >
-              {modoRegistro ? 'Inicia sesión' : 'Regístrate'}
+              {submitting ? 'Procesando...' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
             </button>
-          </p>
+          </form>
+
+          <div className="text-center space-y-2">
+            {mode === 'login' ? (
+              <>
+                <button
+                  onClick={handleResetPassword}
+                  className="text-xs text-[color:var(--color-indigo)] hover:underline cursor-pointer"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+                <p className="text-xs text-[color:var(--color-ink)]/50">
+                  ¿No tienes cuenta?{' '}
+                  <button onClick={() => { setMode('register'); setError(''); setSuccess(''); }} className="text-[color:var(--color-indigo)] font-medium hover:underline cursor-pointer">
+                    Regístrate gratis
+                  </button>
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-[color:var(--color-ink)]/50">
+                ¿Ya tienes cuenta?{' '}
+                <button onClick={() => { setMode('login'); setError(''); setSuccess(''); }} className="text-[color:var(--color-indigo)] font-medium hover:underline cursor-pointer">
+                  Inicia sesión
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="text-center mt-6">
+          <Link href="/" className="text-xs text-[color:var(--color-ink)]/50 hover:text-[color:var(--color-ink)]">
+            ← Volver a Adapto
+          </Link>
         </div>
       </div>
     </div>

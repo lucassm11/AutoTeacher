@@ -1,6 +1,7 @@
-// app/layout.js
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
+import CookieBanner from "@/app/components/CookieBanner";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -22,8 +23,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata = {
-  title: "AutoGradely",
-  description: "Corrección de tareas y exámenes asistida por IA para profesores",
+  title: "Adapto — Adaptacion de Examenes con IA",
+  description: "Adapta examenes educativos conforme al marco DUA / NEAE y LOMLOE usando inteligencia artificial.",
 };
 
 export default function RootLayout({ children }) {
@@ -32,7 +33,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+          <CookieBanner />
+        </AuthProvider>
       </body>
     </html>
   );
